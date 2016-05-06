@@ -17,12 +17,22 @@ defmodule Raycaster.Position do
 end
 
 defmodule Raycaster.Vector do
+  alias Raycaster.Position
   defstruct [:angle, :length]
+
+  def vector_between(p1=%Position{}, p2=%Position{}) do
+    dx = p2.x - p1.x
+    dy = p2.y - p1.y
+    %__MODULE__{
+      length: :math.sqrt(dx * dx + dy * dy),
+      angle: :math.atan2((p2.y - p1.y),(p2.x - p1.x))
+    }
+  end
 end
 
 defmodule Raycaster.Line do
   defstruct [:position, :vector]
-  alias Raycaster.{Position, Vector, Basics}
+  alias Raycaster.{Position, Vector, Basics, Line}
 
   def point1(%__MODULE__{position: position=%Position{}}) do
     position
@@ -31,6 +41,18 @@ defmodule Raycaster.Line do
   def point2(%__MODULE__{position: position=%Position{}, vector: vector=%Vector{}}) do
     {dx, dy} = Basics.from_polar(vector.length, vector.angle)
     %Position{x: position.x + dx, y: position.y + dy}
+  end
+
+  def norms(%__MODULE__{vector: %Vector{ angle: angle }}) do
+    { :math.cos(angle), :math.sin(angle) }
+  end
+
+  def with_length(line, length) do
+    %__MODULE__{line | vector: %Vector{ length: length } }
+  end
+
+  def line_between(from=%Position{}, to=%Position{}) do
+    %Line{position: from, vector: Vector.vector_between(from, to)}
   end
 end
 
@@ -103,7 +125,7 @@ defmodule Raycaster.Renderer do
       config: config,
       canvas: canvas,
       bitmap: bitmap,
-      pos: {0, 0},
+      pos: %Position{x: 0, y: 0},
       walls: walls,
       timer: timer
     }
@@ -126,7 +148,7 @@ defmodule Raycaster.Renderer do
       :wxDC.clear(dc)
       :wxDC.setBrush(dc, :wx_const.wx_red_brush)
       :wxDC.setPen(dc, :wx_const.wx_transparent_pen)
-      :wxDC.drawCircle(dc, state.pos, 5)
+      :wxDC.drawCircle(dc, {state.pos.x, state.pos.y}, 5)
       :wxDC.setBrush(dc, :wx_const.wx_transparent_brush)
       :wxDC.setPen(dc, :wx_const.wx_black_pen)
       for wall <- state.walls do
@@ -134,8 +156,67 @@ defmodule Raycaster.Renderer do
         point2 = Line.point2(wall)
         :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
       end
+      rays = solve_rays(state.walls, state.pos)
+      :wxDC.setPen(dc, :wx_const.wx_red_pen)
+      for ray <- rays do
+        point1 = Line.point1(ray)
+        point2 = Line.point2(ray)
+        :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
+      end
     end
     draw(state.canvas, state.bitmap, fun)
+  end
+
+  @spec intersect(Line.t, Line.t) :: :nothing | Line.t
+  def intersect(line1=%Line{}, line2=%Line{}) do
+    import Basics
+    start1 = Line.point1(line1)
+    { r_px, r_py } = { start1.x, start1.y }
+    start2 = Line.point1(line2)
+    { s_px, s_py } = { start2.x, start2.y }
+    { r_dx, r_dy } = Line.norms line1
+    { s_dx, s_dy } = Line.norms line2
+    sm = ((r_px * r_dy) - (r_py * r_dx) + (s_py * r_dx) - (s_px * r_dy)) / ((s_dx * r_dy) - (s_dy * r_dx))
+    rm = (s_px - r_px + (s_dx * sm)) / r_dx
+
+    cond do
+      sm < 0 -> :nothing
+      line2.vector.length < sm -> :nothing
+      rm < 0 -> :nothing
+      :else -> Line.with_length(line1, rm)
+    end
+  end
+
+  @spec solve_rays(list(Wall.t), Position.t) :: list(Line.t)
+  def solve_rays(walls, ray_start) do
+    walls
+      |> Enum.flat_map(fn wall -> to_rays(ray_start, wall) end)
+      #|> Enum.filter_map(fn line -> line != :nothing end, fn line -> curtail(walls, line) end)
+  end
+
+  def curtail(walls, line) do
+    walls
+      |> Enum.map(fn(wall) -> intersect(line, wall) end)
+      |> Enum.sort(fn(line) -> line.vector.length end)
+      |> hd
+  end
+
+  def to_rays(position, line) do
+    import Basics
+
+    ray_to_start = Line.line_between(position, Line.point1(line))
+    ray_to_end = Line.line_between(position, Line.point2(line))
+
+    [
+      adjust_angle(degrees(0.5), ray_to_start),
+      adjust_angle(degrees(-0.5), ray_to_start),
+      adjust_angle(degrees(0.5), ray_to_end),
+      adjust_angle(degrees(-0.5), ray_to_end)
+    ]
+  end
+
+  def adjust_angle(delta, line=%Line{vector: vector}) do
+    %Line{ line | vector: %Vector{ vector | angle: vector.angle + delta } }
   end
 
   def handle_event(wx(event: wxSize(size: {w, h})), state = %State{bitmap: prev, canvas: canvas}) do
@@ -145,12 +226,8 @@ defmodule Raycaster.Renderer do
     {:noreply, %State{state | bitmap: bitmap}}
   end
 
-  def handle_event(wx(event: wxMouse(type: :left_down, x: x, y: y)), state) do
-    {:noreply, %State{state|pos: {x, y}}}
-  end
-
   def handle_event(wx(event: wxMouse(type: :motion, x: x, y: y)), state = %State{canvas: canvas}) do
-    {:noreply, %State{state | pos: {x, y}}}
+    {:noreply, %State{state | pos: %Position{x: x, y: y}}}
   end
 
   def handle_event(ev = wx(), state = %State{}) do
@@ -176,7 +253,6 @@ defmodule Raycaster.Renderer do
   end
 
   def handle_cast(msg, state) do
-    IO.puts "Got cast #{inspect msg}"
     {:noreply, state}
   end
 
@@ -220,10 +296,6 @@ defmodule Raycaster.Renderer do
       {0,0}
     )
     :wxMemoryDC.destroy(memory_dc)
-  end
-
-  def get_pos(w,h) do
-    {:random.uniform(w), :random.uniform(h)}
   end
 
   def produce_walls do

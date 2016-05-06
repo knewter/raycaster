@@ -50,3 +50,6 @@ wx_green_brush() ->
 
 wx_light_grey_pen() ->
     ?wxLIGHT_GREY_PEN.
+
+wx_red_pen() ->
+    ?wxRED_PEN.
