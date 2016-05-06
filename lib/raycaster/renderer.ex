@@ -16,8 +16,8 @@ defmodule Raycaster.Renderer do
       :config,
       :canvas,
       :bitmap,
-      :overlay,
       :pos,
+      :shapes,
       :timer
     ]
   end
@@ -59,7 +59,19 @@ defmodule Raycaster.Renderer do
 
     timer = :timer.send_interval(@timer_interval, self, :tick)
 
-    {panel, %State{parent: panel, config: config, canvas: canvas, bitmap: bitmap, pos: {0, 0}, overlay: :wxOverlay.new(), timer: timer}}
+    shapes = produce_shapes()
+
+    state = %State{
+      parent: panel,
+      config: config,
+      canvas: canvas,
+      bitmap: bitmap,
+      pos: {0, 0},
+      shapes: shapes,
+      timer: timer
+    }
+
+    {panel, state}
   end
 
   ########
@@ -76,7 +88,17 @@ defmodule Raycaster.Renderer do
     fun = fn(dc) ->
       :wxDC.clear(dc)
       :wxDC.setBrush(dc, :wx_const.wx_red_brush)
-      :wxDC.drawCircle(dc, state.pos, 15)
+      :wxDC.setPen(dc, :wx_const.wx_transparent_pen)
+      :wxDC.drawCircle(dc, state.pos, 5)
+      :wxDC.setBrush(dc, :wx_const.wx_transparent_brush)
+      :wxDC.setPen(dc, :wx_const.wx_black_pen)
+      for shape <- state.shapes do
+        case shape do
+          {:polygon, points} ->
+            :wxDC.drawPolygon(dc, points)
+          _ -> :ignore
+        end
+      end
     end
     draw(state.canvas, state.bitmap, fun)
   end
@@ -92,7 +114,7 @@ defmodule Raycaster.Renderer do
     {:noreply, %State{state|pos: {x, y}}}
   end
 
-  def handle_event(wx(event: wxMouse(type: :motion, x: x, y: y)), state = %State{overlay: overlay, canvas: canvas}) do
+  def handle_event(wx(event: wxMouse(type: :motion, x: x, y: y)), state = %State{canvas: canvas}) do
     {:noreply, %State{state | pos: {x, y}}}
   end
 
@@ -127,9 +149,8 @@ defmodule Raycaster.Renderer do
     {:stop, :ignore, state}
   end
 
-  def terminate(_reason, %State{overlay: overlay, timer: timer}) do
+  def terminate(_reason, %State{timer: timer}) do
     :timer.cancel(timer)
-    :wxOverlay.destroy(overlay)
     :ok
   end
 
@@ -168,5 +189,14 @@ defmodule Raycaster.Renderer do
 
   def get_pos(w,h) do
     {:random.uniform(w), :random.uniform(h)}
+  end
+
+  def produce_shapes do
+    [
+      {:polygon, [{100, 0}, {100, 100}, {200, 100}]},
+      {:polygon, [{150, 250}, {150, 270}, {175, 300}, {200, 300}]},
+      {:polygon, [{250, 450}, {350, 520}, {375, 300}]},
+      {:polygon, [{250, 150}, {250, 270}, {275, 300}, {300, 200}]},
+    ]
   end
 end
