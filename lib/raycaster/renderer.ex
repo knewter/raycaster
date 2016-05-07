@@ -48,7 +48,7 @@ defmodule Raycaster.Line do
   end
 
   def with_length(line, length) do
-    %__MODULE__{line | vector: %Vector{ length: length } }
+    %__MODULE__{line | vector: %Vector{ line.vector | length: length } }
   end
 
   def line_between(from=%Position{}, to=%Position{}) do
@@ -158,6 +158,7 @@ defmodule Raycaster.Renderer do
       end
       rays = solve_rays(state.walls, state.pos)
       :wxDC.setPen(dc, :wx_const.wx_red_pen)
+      :wxDC.setBrush(dc, :wxBrush.new({255, 255, 0})) # yellow
       for ray <- rays do
         point1 = Line.point1(ray)
         point2 = Line.point2(ray)
@@ -191,14 +192,23 @@ defmodule Raycaster.Renderer do
   def solve_rays(walls, ray_start) do
     walls
       |> Enum.flat_map(fn wall -> to_rays(ray_start, wall) end)
-      #|> Enum.filter_map(fn line -> line != :nothing end, fn line -> curtail(walls, line) end)
+      |> Enum.map(fn line -> curtail(walls, line) end)
+      |> Enum.filter(fn line -> line != :nothing end)
   end
 
   def curtail(walls, line) do
-    walls
-      |> Enum.map(fn(wall) -> intersect(line, wall) end)
-      |> Enum.sort(fn(line) -> line.vector.length end)
-      |> hd
+    result =
+      walls
+        |> Enum.map(fn(wall) -> intersect(line, wall) end)
+        |> Enum.filter(fn(line) -> line != :nothing end)
+        |> Enum.sort(fn(first, second) ->
+          first.vector.length < second.vector.length
+        end)
+
+    case result do
+      [] -> :nothing
+      l  -> hd(l)
+    end
   end
 
   def to_rays(position, line) do
