@@ -156,14 +156,17 @@ defmodule Raycaster.Renderer do
         point2 = Line.point2(wall)
         :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
       end
-      rays = solve_rays(state.walls, state.pos)
-      :wxDC.setPen(dc, :wx_const.wx_red_pen)
+      :wxDC.setPen(dc, :wx_const.wx_transparent_pen)
       :wxDC.setBrush(dc, :wxBrush.new({255, 255, 0})) # yellow
-      for ray <- rays do
-        point1 = Line.point1(ray)
-        point2 = Line.point2(ray)
-        :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
-      end
+      rays = solve_rays(state.walls, state.pos)
+      outer_polygon_points =
+        rays
+        |> Enum.map(fn ray ->
+             point = Line.point2(ray)
+             {round(point.x), round(point.y)}
+           end)
+      IO.inspect outer_polygon_points
+      :wxDC.drawPolygon(dc, outer_polygon_points)
     end
     draw(state.canvas, state.bitmap, fun)
   end
@@ -188,12 +191,18 @@ defmodule Raycaster.Renderer do
     end
   end
 
+  @doc """
+  Solve for rays including wall intersection, and return them sorted by angle.
+  """
   @spec solve_rays(list(Wall.t), Position.t) :: list(Line.t)
   def solve_rays(walls, ray_start) do
     walls
       |> Enum.flat_map(fn wall -> to_rays(ray_start, wall) end)
       |> Enum.map(fn line -> curtail(walls, line) end)
       |> Enum.filter(fn line -> line != :nothing end)
+      |> Enum.sort(fn (line1, line2) ->
+           line1.vector.angle > line2.vector.angle
+         end)
   end
 
   def curtail(walls, line) do
