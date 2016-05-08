@@ -103,7 +103,7 @@ defmodule Raycaster.Renderer do
       config: config,
       canvas: canvas,
       bitmap: bitmap,
-      pos: {0, 0},
+      pos: %Position{x: 0, y: 0},
       walls: walls,
       timer: timer
     }
@@ -126,7 +126,7 @@ defmodule Raycaster.Renderer do
       :wxDC.clear(dc)
       :wxDC.setBrush(dc, :wx_const.wx_red_brush)
       :wxDC.setPen(dc, :wx_const.wx_transparent_pen)
-      :wxDC.drawCircle(dc, state.pos, 5)
+      :wxDC.drawCircle(dc, {round(state.pos.x), round(state.pos.y)}, 5)
       :wxDC.setBrush(dc, :wx_const.wx_transparent_brush)
       :wxDC.setPen(dc, :wx_const.wx_black_pen)
       for wall <- state.walls do
@@ -145,12 +145,8 @@ defmodule Raycaster.Renderer do
     {:noreply, %State{state | bitmap: bitmap}}
   end
 
-  def handle_event(wx(event: wxMouse(type: :left_down, x: x, y: y)), state) do
-    {:noreply, %State{state|pos: {x, y}}}
-  end
-
   def handle_event(wx(event: wxMouse(type: :motion, x: x, y: y)), state = %State{canvas: canvas}) do
-    {:noreply, %State{state | pos: {x, y}}}
+    {:noreply, %State{state | pos: %Position{x: x, y: y}}}
   end
 
   def handle_event(ev = wx(), state = %State{}) do
