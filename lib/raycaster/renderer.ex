@@ -99,21 +99,31 @@ defmodule Raycaster.Renderer do
         :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
       end
       rays = to_rays(state.pos)
-      first_wall = Enum.at(state.walls, 0)
-      intersections = Enum.map(rays, fn(ray) ->
-        intersection = Line.intersect(ray, first_wall)
-        {intersection, ray}
-      end)
       :wxDC.setPen(dc, :wxPen.new({255, 0, 0, 0}))
-      for {intersection, ray} <- intersections do
-        if(intersection == :nothing) do
-          point1 = Line.point1(ray)
-          point2 = Line.point2(ray)
-          :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
-        else
-          point1 = Line.point1(intersection)
-          point2 = Line.point2(intersection)
-          :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
+      # Find all the intersections for each ray
+      ray_intersections =
+        for ray <- rays do
+          intersections =
+            state.walls
+            |> Enum.map(fn wall ->
+              Line.intersect(ray, wall)
+            end)
+            |> Enum.filter(fn intersection -> intersection != :nothing end) # Filter out the non-intersecting ones
+          {ray, intersections}
+        end
+      # For each ray, draw the shortest intersection
+      for {ray, intersections} <- ray_intersections do
+        sorted_intersections = Enum.sort(intersections, fn(intersection1, intersection2) -> intersection1.vector.length < intersection2.vector.length end)
+        case sorted_intersections do
+          [] ->
+            point1 = Line.point1(ray)
+            point2 = Line.point2(ray)
+            :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
+          [shortest_intersection|_] ->
+            IO.puts inspect shortest_intersection
+            point1 = Line.point1(shortest_intersection)
+            point2 = Line.point2(shortest_intersection)
+            :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
         end
       end
     end
@@ -127,8 +137,9 @@ defmodule Raycaster.Renderer do
   def to_rays(ray_start) do
     import Basics
 
-    for angle <- Enum.to_list(0..359) do
-      #for angle <- [270] do
+    #for angle <- Enum.to_list(0..359) do
+      #for angle <- [90] do
+    for angle <- [0, 90, 180, 270] do
       vector = %Vector{length: 1000, angle: degrees(angle)}
       line = %Line{position: ray_start, vector: vector}
     end

@@ -62,8 +62,14 @@ defmodule Raycaster.IntersectionVisualizer do
 
     timer = :timer.send_interval(@timer_interval, self, :tick)
 
-    line1 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 434}, vector: %Raycaster.Vector{angle: degrees(45), length: 1000}}
-    line2 = %Raycaster.Line{position: %Raycaster.Position{x: 100, y: 500}, vector: %Raycaster.Vector{angle: degrees(0), length: 600}}
+    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 434}, vector: %Raycaster.Vector{angle: degrees(45), length: 1000}}
+    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 100, y: 500}, vector: %Raycaster.Vector{angle: degrees(0), length: 600}}
+
+    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 300, y: 600}, vector: %Raycaster.Vector{angle: degrees(270), length: 200}}
+    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 240, y: 334}, vector: %Raycaster.Vector{angle: degrees(65), length: 200}}
+
+    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 300, y: 300}, vector: %Raycaster.Vector{angle: degrees(0), length: 200}}
+    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 320, y: 334}, vector: %Raycaster.Vector{angle: degrees(90), length: 200}}
 
     # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 434}, vector: %Raycaster.Vector{angle: degrees(90), length: 1000}}
     # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 100, y: 500}, vector: %Raycaster.Vector{angle: degrees(0), length: 600}}
@@ -74,14 +80,23 @@ defmodule Raycaster.IntersectionVisualizer do
     # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 952, y: 337}, vector: %Raycaster.Vector{angle: 3.141592653589793, length: 1000}}
     # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 200}, vector: %Raycaster.Vector{angle: 1.5707963267948966, length: 600}}
 
-    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 800, y: 200}, vector: %Raycaster.Vector{angle: 1.5707963267948966, length: 600}}
-    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 994, y: 385}, vector: %Raycaster.Vector{angle: 3.141592653589793, length: 1000}}
+    line1 = %Raycaster.Line{position: %Raycaster.Position{x: 800, y: 200}, vector: %Raycaster.Vector{angle: 1.5707963267948966, length: 600}}
+    line2 = %Raycaster.Line{position: %Raycaster.Position{x: 994, y: 385}, vector: %Raycaster.Vector{angle: 3.141592653589793, length: 1000}}
 
     # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 635, y: 384}, vector: %Raycaster.Vector{angle: 4.71238898038469, length: 1000}}
     # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 200}, vector: %Raycaster.Vector{angle: 0.0, length: 600}}
 
     # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 993, y: 458}, vector: %Raycaster.Vector{angle: 4.71238898038469, length: 1000}}
     # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 200}, vector: %Raycaster.Vector{angle: 0.0, length: 600}}
+
+    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 400, y: 400}, vector: %Raycaster.Vector{angle: degrees(90), length: 1000}}
+    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 200}, vector: %Raycaster.Vector{angle: degrees(0), length: 600}}
+
+    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 400, y: 400}, vector: %Raycaster.Vector{angle: degrees(225), length: 1000}}
+    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 200, y: 300}, vector: %Raycaster.Vector{angle: degrees(0), length: 600}}
+
+    # line1 = %Raycaster.Line{position: %Raycaster.Position{x: 400, y: 400}, vector: %Raycaster.Vector{angle: degrees(225), length: 1000}}
+    # line2 = %Raycaster.Line{position: %Raycaster.Position{x: 500, y: 300}, vector: %Raycaster.Vector{angle: degrees(180), length: 600}}
 
     state = %State{
       parent: panel,
@@ -223,14 +238,16 @@ defmodule Raycaster.IntersectionVisualizer do
           # IO.puts "d: #{d}"
           new_length = line2_rotated.position.x + d
           :wxDC.drawText(dc, 'new_length: #{inspect new_length}', {20, 120})
-          # The line only intersects if the length of line2 is at least the length of the new line
-          # if the rotated line2 doesn't cross the origin, then there is no intersection.
-          intersecting_line = Line.with_length(line1, new_length)
-          intersection_point = Line.point2(intersecting_line)
-          :wxDC.drawText(dc, 'intersection_point: #{inspect intersection_point}', {20, 160})
-          :wxDC.drawCircle(dc, {round(intersection_point.x), round(intersection_point.y)}, 5)
-          :wxDC.setPen(dc, :wx_const.wx_black_pen)
-          draw_line(dc, intersecting_line)
+          if(new_length > 0) do
+            # The line only intersects if the length of line2 is at least the length of the new line
+            # if the rotated line2 doesn't cross the origin, then there is no intersection.
+            intersecting_line = Line.with_length(line1, new_length)
+            intersection_point = Line.point2(intersecting_line)
+            :wxDC.drawText(dc, 'intersection_point: #{inspect intersection_point}', {20, 160})
+            :wxDC.drawCircle(dc, {round(intersection_point.x), round(intersection_point.y)}, 5)
+            :wxDC.setPen(dc, :wx_const.wx_black_pen)
+            draw_line(dc, intersecting_line)
+          end
         end
       end
     end
@@ -271,32 +288,66 @@ defmodule Raycaster.IntersectionVisualizer do
         :wxDC.drawText(dc, 'c: #{inspect c}', {20, 80})
         # IO.puts "c: #{inspect c}"
         # IO.puts "c > 0"
-        if(c < 0) do
-          :nothing
-        else
-          # So c is the length of line2 where it intersects with line1.  The length of line1 at that point is line2_rotated.position.x + the length of the base of the triangle defined by line2_rotated
-          # The length of that base is d where:
-          # cos(a) = d/c
-          # c * cos(a) = d
-          d = c * :math.cos(a)
-          :wxDC.drawText(dc, 'd: #{inspect d}', {20, 100})
-          # IO.puts "c: #{c}"
-          # IO.puts "math cos a: #{:math.cos(a)}"
-          # IO.puts "d: #{d}"
-          new_length = line2_rotated.position.x + d
-          :wxDC.drawText(dc, 'new_length: #{inspect new_length}', {20, 120})
+        # So c is the length of line2 where it intersects with line1.  The length of line1 at that point is line2_rotated.position.x + the length of the base of the triangle defined by line2_rotated
+        # The length of that base is d where:
+        # cos(a) = d/c
+        # c * cos(a) = d
+        d = c * :math.cos(a)
+        :wxDC.drawText(dc, 'd: #{inspect d}', {20, 100})
+        # IO.puts "c: #{c}"
+        # IO.puts "math cos a: #{:math.cos(a)}"
+        # IO.puts "d: #{d}"
+        new_length = line2_rotated.position.x + d
+        :wxDC.drawText(dc, 'new_length: #{inspect new_length}', {20, 120})
+        if(new_length > 0) do
           # The line only intersects if the length of line2 is at least the length of the new line
           # if the rotated line2 doesn't cross the origin, then there is no intersection.
           :wxDC.drawText(dc, 'line2 rotated: #{inspect line2_rotated}', {20, 380})
           intersecting_line = Line.with_length(line1, new_length)
           intersection_point = Line.point2(intersecting_line)
-          if(intersection_point.x > Line.point2(line2).x) do
-            :nothing
-          else
-            :wxDC.drawText(dc, 'intersection_point: #{inspect intersection_point}', {20, 160})
-            :wxDC.drawCircle(dc, {round(intersection_point.x), round(intersection_point.y)}, 5)
+          :wxDC.drawText(dc, 'intersection_point: #{inspect intersection_point}', {20, 160})
+          :wxDC.drawText(dc, 'Line1 start: #{inspect Line.point1(line1)}', {20, 180})
+          :wxDC.drawText(dc, 'Line1 end: #{inspect Line.point2(line1)}', {20, 200})
+          :wxDC.drawText(dc, 'Line2 start: #{inspect Line.point1(line2)}', {20, 220})
+          :wxDC.drawText(dc, 'Line2 end: #{inspect Line.point2(line2)}', {20, 240})
+          :wxDC.drawCircle(dc, {round(intersection_point.x), round(intersection_point.y)}, 5)
+          between_line2_x =
+            ((Line.point1(line2).x <= intersection_point.x) &&
+             (intersection_point.x <= Line.point2(line2).x)) ||
+            ((Line.point1(line2).x >= intersection_point.x) &&
+             (intersection_point.x >= Line.point2(line2).x))
+          between_line1_x =
+            ((Line.point1(line1).x <= intersection_point.x) &&
+             (intersection_point.x <= Line.point2(line1).x)) ||
+            ((Line.point1(line1).x >= intersection_point.x) &&
+             (intersection_point.x >= Line.point2(line1).x))
+          between_line2_y =
+            ((Line.point1(line2).y <= intersection_point.y) &&
+             (intersection_point.y <= Line.point2(line2).y)) ||
+            ((Line.point1(line2).y >= intersection_point.y) &&
+             (intersection_point.y >= Line.point2(line2).y))
+          between_line1_y =
+            ((Line.point1(line1).y <= intersection_point.y) &&
+             (intersection_point.y <= Line.point2(line1).y)) ||
+            ((Line.point1(line1).y >= intersection_point.y) &&
+             (intersection_point.y >= Line.point2(line1).y))
+          if(between_line1_x) do
+            IO.puts "between_line1_x"
+          end
+          if(between_line2_x) do
+            IO.puts "between_line2_x"
+          end
+          if(between_line1_y) do
+            IO.puts "between_line1_y"
+          end
+          if(between_line2_y) do
+            IO.puts "between_line2_y"
+          end
+          if(between_line1_x && between_line2_x && between_line1_y && between_line2_y) do
             :wxDC.setPen(dc, :wx_const.wx_black_pen)
             draw_line(dc, intersecting_line)
+          else
+            :nothing
           end
         end
       end

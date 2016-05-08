@@ -55,26 +55,43 @@ defmodule Raycaster.Line do
       # angle is in radians
       a = line2_rotated.vector.angle
       c = y/(:math.sin(a))
-      # IO.puts "c: #{inspect c}"
-      # IO.puts "c > 0"
-      # So c is the length of line2 where it intersects with line1.  The length of line1 at that point is line2_rotated.position.x + the length of the base of the triangle defined by line2_rotated
-      # The length of that base is d where:
-      # cos(a) = d/c
-      # c * cos(a) = d
-      d = c * :math.cos(a)
-      # IO.puts "c: #{c}"
-      # IO.puts "math cos a: #{:math.cos(a)}"
-      # IO.puts "d: #{d}"
-      new_length = line2_rotated.position.x + d
-      # The line only intersects if the length of line2 is at least the length of the new line
-      # if the rotated line2 doesn't cross the origin, then there is no intersection.
-      intersecting_line = Line.with_length(line1, new_length)
-      intersection_point = Line.point2(intersecting_line)
-      if(intersection_point.x > Line.point2(line2).x ||
-         intersection_point.x < Line.point1(line2).x) do
+      if(c < 0) do # would intersect, but behind the starting point so no go
         :nothing
       else
-        intersecting_line
+        # So c is the length of line2 where it intersects with line1.  The length of line1 at that point is line2_rotated.position.x + the length of the base of the triangle defined by line2_rotated
+        # The length of that base is d where:
+        # cos(a) = d/c
+        # c * cos(a) = d
+        d = c * :math.cos(a)
+        new_length = line2_rotated.position.x + d
+        intersecting_line = Line.with_length(line1, new_length)
+        intersection_point = Line.point2(intersecting_line)
+        # The lines only intersect if the x and y of the supposed intersection lies on both line segments
+        between_line2_x =
+          ((Line.point1(line2).x <= intersection_point.x) &&
+           (intersection_point.x <= Line.point2(line2).x)) ||
+          ((Line.point1(line2).x >= intersection_point.x) &&
+           (intersection_point.x >= Line.point2(line2).x))
+        between_line1_x =
+          ((Line.point1(line1).x <= intersection_point.x) &&
+           (intersection_point.x <= Line.point2(line1).x)) ||
+          ((Line.point1(line1).x >= intersection_point.x) &&
+           (intersection_point.x >= Line.point2(line1).x))
+        between_line2_y =
+          ((Line.point1(line2).y <= intersection_point.y) &&
+           (intersection_point.y <= Line.point2(line2).y)) ||
+          ((Line.point1(line2).y >= intersection_point.y) &&
+           (intersection_point.y >= Line.point2(line2).y))
+        between_line1_y =
+          ((Line.point1(line1).y <= intersection_point.y) &&
+           (intersection_point.y <= Line.point2(line1).y)) ||
+          ((Line.point1(line1).y >= intersection_point.y) &&
+           (intersection_point.y >= Line.point2(line1).y))
+        if(between_line1_x && between_line2_x && between_line1_y && between_line2_y) do
+          intersecting_line
+        else
+          :nothing
+        end
       end
     end
   end
