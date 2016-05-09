@@ -120,7 +120,6 @@ defmodule Raycaster.Renderer do
             point2 = Line.point2(ray)
             :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
           [shortest_intersection|_] ->
-            IO.puts inspect shortest_intersection
             point1 = Line.point1(shortest_intersection)
             point2 = Line.point2(shortest_intersection)
             :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
