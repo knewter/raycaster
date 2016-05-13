@@ -1,39 +1,3 @@
-defmodule Raycaster.Basics do
-  @doc "Converts polar coordinates to cartesian coordinates"
-  def from_polar(r, theta) do
-    x = r * :math.cos(theta)
-    y = r * :math.sin(theta)
-    {x, y}
-  end
-
-  @doc "Converts degrees to radians"
-  def degrees(deg) do
-    deg * (:math.pi / 180)
-  end
-end
-
-defmodule Raycaster.Position do
-  defstruct [:x, :y]
-end
-
-defmodule Raycaster.Vector do
-  defstruct [:angle, :length]
-end
-
-defmodule Raycaster.Line do
-  defstruct [:position, :vector]
-  alias Raycaster.{Position, Vector, Basics}
-
-  def point1(%__MODULE__{position: position=%Position{}}) do
-    position
-  end
-
-  def point2(%__MODULE__{position: position=%Position{}, vector: vector=%Vector{}}) do
-    {dx, dy} = Basics.from_polar(vector.length, vector.angle)
-    %Position{x: position.x + dx, y: position.y + dy}
-  end
-end
-
 defmodule Raycaster.Renderer do
   @behaviour :wx_object
   @timer_interval 20
@@ -134,8 +98,48 @@ defmodule Raycaster.Renderer do
         point2 = Line.point2(wall)
         :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
       end
+
+      rays = to_rays(state.pos)
+      :wxDC.setPen(dc, :wxPen.new({255, 0, 0, 0}))
+
+      ray_intersections =
+        for ray <- rays do
+          intersections =
+            state.walls
+            |> Enum.map(fn wall ->
+              Line.intersect(ray, wall)
+            end)
+            |> Enum.filter(fn i -> i != :nothing end)
+          {ray, intersections}
+        end
+
+      for {ray, intersections} <- ray_intersections do
+        sorted_intersections =
+          intersections
+          |> Enum.sort(fn(i1, i2) ->
+            i1.vector.length < i2.vector.length
+          end)
+
+        line_to_draw =
+          case sorted_intersections do
+            [] -> ray
+            [shortest_intersection|_] -> shortest_intersection
+          end
+
+        point1 = Line.point1(line_to_draw)
+        point2 = Line.point2(line_to_draw)
+        :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
+      end
     end
     draw(state.canvas, state.bitmap, fun)
+  end
+
+  def to_rays(ray_start=%Position{}) do
+    import Basics
+
+    for angle <- [0, 90, 180, 270] do
+      %Line{position: ray_start, vector: %Vector{length: 1000, angle: degrees(angle)}}
+    end
   end
 
   def handle_event(wx(event: wxSize(size: {w, h})), state = %State{bitmap: prev, canvas: canvas}) do
