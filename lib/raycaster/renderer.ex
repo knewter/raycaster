@@ -165,7 +165,7 @@ defmodule Raycaster.Renderer do
              point = Line.point2(ray)
              {round(point.x), round(point.y)}
            end)
-      IO.inspect outer_polygon_points
+      # IO.inspect outer_polygon_points
       :wxDC.drawPolygon(dc, outer_polygon_points)
     end
     draw(state.canvas, state.bitmap, fun)
@@ -293,7 +293,7 @@ defmodule Raycaster.Renderer do
     memory_dc = :wxMemoryDC.new(bitmap)
     fun.(memory_dc)
 
-    cdc = :wxWindowDC.new(canvas)
+    cdc = :wxClientDC.new(canvas)
     :wxDC.blit(
       cdc,
       {0,0},
