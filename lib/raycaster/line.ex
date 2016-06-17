@@ -65,4 +65,28 @@ defmodule Raycaster.Line do
       end
     end
   end
+
+  def between(point1, point2) do
+    rise = point2.y - point1.y
+    run = point2.x - point1.x
+    # angle: tan a = rise/run
+    #            a = arctan(rise/run)
+    # length = rise/(sin(angle))
+    angle =
+      if(run == 0) do
+        0
+      else
+        :math.atan(rise/run)
+      end
+
+    length =
+      if(:math.sin(angle) == 0) do
+        run
+      else
+        rise / :math.sin(angle)
+      end
+
+    vector = %Vector{length: length, angle: angle} |> Vector.normalize
+    %__MODULE__{position: point1, vector: vector}
+  end
 end

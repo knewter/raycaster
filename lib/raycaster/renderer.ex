@@ -91,15 +91,8 @@ defmodule Raycaster.Renderer do
       :wxDC.setBrush(dc, :wx_const.wx_red_brush)
       :wxDC.setPen(dc, :wx_const.wx_transparent_pen)
       :wxDC.drawCircle(dc, {round(state.pos.x), round(state.pos.y)}, 5)
-      :wxDC.setBrush(dc, :wx_const.wx_transparent_brush)
-      :wxDC.setPen(dc, :wx_const.wx_black_pen)
-      for wall <- state.walls do
-        point1 = Line.point1(wall)
-        point2 = Line.point2(wall)
-        :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
-      end
 
-      rays = to_rays(state.pos)
+      rays = to_rays(state.pos, state.walls)
       :wxDC.setPen(dc, :wxPen.new({255, 0, 0, 0}))
 
       ray_intersections =
@@ -113,33 +106,67 @@ defmodule Raycaster.Renderer do
           {ray, intersections}
         end
 
-      for {ray, intersections} <- ray_intersections do
-        sorted_intersections =
-          intersections
-          |> Enum.sort(fn(i1, i2) ->
-            i1.vector.length < i2.vector.length
-          end)
+      lines =
+        for {ray, intersections} <- ray_intersections do
+          sorted_intersections =
+            intersections
+            |> Enum.sort(fn(i1, i2) ->
+              i1.vector.length < i2.vector.length
+            end)
 
-        line_to_draw =
           case sorted_intersections do
             [] -> ray
             [shortest_intersection|_] -> shortest_intersection
           end
+        end
 
-        point1 = Line.point1(line_to_draw)
-        point2 = Line.point2(line_to_draw)
+      points =
+        lines
+        |> Enum.sort(fn line1, line2 -> line1.vector.angle < line2.vector.angle end)
+        |> Enum.map(fn line ->
+          point2 = Line.point2(line)
+          {round(point2.x), round(point2.y)}
+        end)
+
+      :wxDC.setPen(dc, :wx_const.wx_transparent_pen)
+      :wxDC.setBrush(dc, :wxBrush.new({255, 255, 0, 0}))
+      :wxDC.drawPolygon(dc, points)
+
+      :wxDC.setBrush(dc, :wx_const.wx_transparent_brush)
+      :wxDC.setPen(dc, :wx_const.wx_black_pen)
+      for wall <- state.walls do
+        point1 = Line.point1(wall)
+        point2 = Line.point2(wall)
         :wxDC.drawLine(dc, {round(point1.x), round(point1.y)}, {round(point2.x), round(point2.y)})
       end
+
     end
     draw(state.canvas, state.bitmap, fun)
   end
 
-  def to_rays(ray_start=%Position{}) do
+  def to_rays(ray_start=%Position{}, walls) do
     import Basics
 
-    for angle <- [0, 90, 180, 270] do
-      %Line{position: ray_start, vector: %Vector{length: 1000, angle: degrees(angle)}}
-    end
+    walls
+    |> Enum.flat_map(fn wall ->
+      ray_to_start = Line.between(ray_start, Line.point1(wall))
+      ray_to_end = Line.between(ray_start, Line.point2(wall))
+
+      ray_to_start = %Line{ray_to_start | vector: %Vector{ray_to_start.vector | length: 1000 } }
+      ray_to_end = %Line{ray_to_end | vector: %Vector{ray_to_end.vector | length: 1000 } }
+
+      [
+        adjust_angle(degrees( 0.1), ray_to_start),
+        adjust_angle(degrees(-0.1), ray_to_start),
+        adjust_angle(degrees( 0.1), ray_to_end),
+        adjust_angle(degrees(-0.1), ray_to_end)
+      ]
+    end)
+  end
+
+  def adjust_angle(delta, line=%Line{vector: vector}) do
+    vector = %Vector{ vector | angle: vector.angle + delta } |> Vector.normalize
+    %Line{ line | vector: vector }
   end
 
   def handle_event(wx(event: wxSize(size: {w, h})), state = %State{bitmap: prev, canvas: canvas}) do
